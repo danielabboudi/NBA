@@ -174,6 +174,7 @@ select, input[type="text"] {
   width: 100%;
   aspect-ratio: 1 / 1;
   height: auto !important;
+  touch-action: none;   /* let Plotly own pinch/drag on the zoomable chart */
 }
 
 /* ==== Bottom nav ==== */
@@ -583,6 +584,7 @@ nav.bottom-nav button.active::before {
       </div>
       <div class="row">
         <button class="pill active" id="quad-toggle">Quadrant labels: On</button>
+        <button class="pill" id="scatter-reset">Reset zoom</button>
       </div>
     </div>
     <div class="card">
@@ -591,7 +593,7 @@ nav.bottom-nav button.active::before {
       </div>
       <div class="card-sub">z-scored contributions &middot; diagonal = iso-rating</div>
       <div id="plot-scatter" class="plot square-wrap"></div>
-      <div class="card-caption">Tap any dot for full breakdown</div>
+      <div class="card-caption">Pinch or drag a box to zoom &middot; double-tap to reset &middot; tap a dot to focus</div>
     </div>
   </section>
 
@@ -837,9 +839,14 @@ function renderRankings() {
     hovertemplate: hover,
     cliponaxis: false,
   };
+  // Pad the x-range so the outside value labels never overflow onto the
+  // team-name ticks (the long negative bars were colliding with MEM/WAS/BKN).
+  const vMax = Math.max(0, ...vals), vMin = Math.min(0, ...vals);
+  const vPad = Math.max(0.8, (vMax - vMin) * 0.16);
   const layout = Object.assign({}, COMMON_LAYOUT, {
     margin: { t: 12, b: 30, l: 44, r: 50 },
     xaxis: Object.assign({}, COMMON_AXIS, {
+      range: [vMin - vPad, vMax + vPad],
       title: { text: 'Pts vs league avg', font: { size: 11, color: MUTED, family: "'Plus Jakarta Sans', sans-serif" } },
     }),
     yaxis: Object.assign({}, COMMON_AXIS, {
@@ -909,11 +916,12 @@ function lightenHex(hex, mix) {
   const lb = Math.round(b + (255 - b) * m);
   return '#' + [lr, lg, lb].map(v => v.toString(16).padStart(2, '0')).join('');
 }
-const FACTOR_DEF_COLORS = Object.assign({}, FACTOR_COLORS);
-const FACTOR_OFF_COLORS = {};
-Object.keys(FACTOR_COLORS).forEach(f => { FACTOR_OFF_COLORS[f] = lightenHex(FACTOR_COLORS[f], OFFENSE_TINT); });
+// Danny's call (2026-07-06): darker = OFFENSE, lighter = defense.
+const FACTOR_OFF_COLORS = Object.assign({}, FACTOR_COLORS);
+const FACTOR_DEF_COLORS = {};
+Object.keys(FACTOR_COLORS).forEach(f => { FACTOR_DEF_COLORS[f] = lightenHex(FACTOR_COLORS[f], OFFENSE_TINT); });
 
-const DECOMP_SUB_SPLIT = 'Stacked contributions sum to ridge rating &middot; darker = defense, lighter = offense';
+const DECOMP_SUB_SPLIT = 'Stacked contributions sum to ridge rating &middot; darker = offense, lighter = defense';
 const DECOMP_SUB_NET   = 'Bars sum to ridge rating &middot; 2P &middot; 3P &middot; REB &middot; TOV &middot; FT (net of off+def)';
 
 function renderDecomp() {
@@ -1045,16 +1053,22 @@ function renderScatter() {
     { x:-1.8, y:-2.4, text:'Low<br>Performers',  showarrow:false, font:{color: MUTED, size: 10, family: "'Plus Jakarta Sans', sans-serif"} },
   ] : [];
 
+  // Zoom is ENABLED on this chart only (Danny 2026-07-06): pinch on touch,
+  // drag-a-box on desktop, double-tap/double-click resets, plus the Reset
+  // zoom pill. fixedrange off + dragmode zoom; scaleanchor keeps 1:1.
   const layout = Object.assign({}, COMMON_LAYOUT, {
+    dragmode: 'zoom',
     margin: { t: 10, b: 38, l: 38, r: 10 },
     xaxis: Object.assign({}, COMMON_AXIS, {
       range: [-3.2, 3.2],
+      fixedrange: false,
       zerolinecolor: SLATE_MID,
       gridcolor: 'transparent',
       title: { text: 'Off z-score', font: { color: GRAPHITE, size: 11, family: "'Plus Jakarta Sans', sans-serif" } },
     }),
     yaxis: Object.assign({}, COMMON_AXIS, {
       range: [-3.2, 3.2],
+      fixedrange: false,
       zerolinecolor: SLATE_MID,
       gridcolor: 'transparent',
       title: { text: 'Def z-score', font: { color: GRAPHITE, size: 11, family: "'Plus Jakarta Sans', sans-serif" } },
@@ -1064,7 +1078,12 @@ function renderScatter() {
     transition: { duration: 350 },
     autosize: true,
   });
-  Plotly.react('plot-scatter', [trace], layout, HARDEN);
+  const SCATTER_CFG = Object.assign({}, HARDEN, {
+    scrollZoom: true,
+    doubleClick: 'reset',
+    showAxisDragHandles: true,
+  });
+  Plotly.react('plot-scatter', [trace], layout, SCATTER_CFG);
   const gd = document.getElementById('plot-scatter');
   gd.on('plotly_click', e => {
     if (!e.points || !e.points.length) return;
@@ -1090,6 +1109,12 @@ document.getElementById('quad-toggle').addEventListener('click', e => {
   e.target.classList.toggle('active', QUAD_LABELS);
   e.target.textContent = 'Quadrant labels: ' + (QUAD_LABELS ? 'On' : 'Off');
   if (SCATTER_RENDERED) renderScatter();
+});
+document.getElementById('scatter-reset').addEventListener('click', () => {
+  if (!SCATTER_RENDERED) return;
+  Plotly.relayout('plot-scatter', {
+    'xaxis.range': [-3.2, 3.2], 'yaxis.range': [-3.2, 3.2],
+  });
 });
 
 // =====================================================================
