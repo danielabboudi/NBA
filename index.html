@@ -289,8 +289,11 @@ nav.bottom-nav button.active::before {
 }
 .signal-flags { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .flag { font-size: 10.5px; padding: 3px 9px; border-radius: var(--r-pill); border: 1px solid; font-weight: 600; }
+.flag.strong  { color: #fff; border-color: var(--green-t); background: var(--green-t); font-weight: 700; }
 .flag.window  { color: var(--green-t); border-color: var(--green-t); background: var(--green-bg); }
+.flag.lean    { color: var(--graphite); border-color: var(--border); background: var(--surface); }
 .flag.caution { color: var(--amber-t); border-color: var(--amber-t); background: var(--amber-bg); }
+.flag.revenge { color: #5B6BC0; border-color: #5B6BC0; background: #5B6BC01A; }
 .game-detail {
   max-height: 0; opacity: 0; overflow: hidden;
   transition: max-height .35s ease, opacity .25s ease;
@@ -1330,30 +1333,48 @@ function edgeCallout(g) {
          'more than the opening line</div>';
 }
 
-// Bet signal: plain-English line from the CLV-derived strategy.
-//   BET      |edge| in [3.0, 3.5]  (optimal threshold from equity curves)
-//   LEAN     |edge| in [1.5, 3.0)
-//   PASS     |edge| < 1.5
-//   PASS_NEWS |edge| > 3.5 (likely injury/news-driven move — do not chase)
+// Bet signal tiers (walk-forward validated, BETTING_REPORT 2026-07-05):
+//   STRONG_BET   |edge| in [3.0, 3.5], Oct-Jan  — pre-registered band (58% ATS)
+//   BET          |edge| > 3.5, Oct-Jan          — healthy with lineup data (55%)
+//   LEAN         |edge| in [1.5, 3.0), Oct-Jan  — informational, ~breakeven
+//   PASS_WINDOW  a tier fired but the game is outside Oct-Jan → no bet
+// Plus the independent revenge overlay and half-size on home leans.
+const TIER_TEXT = { STRONG_BET: 'STRONG BET', BET: 'BET', LEAN: 'LEAN' };
 function betSignal(g) {
   const action = g.bet_action || 'PASS';
   if (action === 'NO_LINE') {
     return '<div class="bet-signal pass">No opening line yet — no bet signal</div>';
   }
   if (action === 'PASS') {
-    return '<div class="bet-signal pass">No bet on this game (edge below threshold)</div>';
+    return '<div class="bet-signal pass">No bet on this game (edge below 1.5)</div>';
   }
-  if (action === 'PASS_NEWS') {
-    return '<div class="bet-signal pass">PASS — disagreement above 3.5 pts is usually an injury/news move the model can’t see</div>';
+  if (action === 'PASS_WINDOW') {
+    const t = g.recommended_team || '';
+    return '<div class="bet-signal pass">Outside the Oct–Jan window — no bet' +
+           (t ? ' <span style="font-weight:500;">(edge ' + fmtSigned(g.edge, 1) +
+                ' would otherwise flag ' + t + ')</span>' : '') + '</div>';
   }
   const team = g.recommended_team || '—';
   const line = g.recommended_line;
   const lineStr = (line === null || line === undefined || isNaN(+line))
     ? '' : ' at <span class="bet-signal-strong">' + (+line > 0 ? '+' : '') + (+line).toFixed(1) + '</span> or better';
-  const windowNote = (g.in_window === false)
-    ? ' <span style="font-weight:500; color:var(--muted);">(outside Oct–Jan window — reduce size)</span>' : '';
-  return '<div class="bet-signal">' + action +
-         ' &middot; <span class="bet-signal-strong">' + team + '</span>' + lineStr + windowNote + '</div>';
+  const half = (g.half_size === true)
+    ? ' <span style="font-weight:600; color:var(--amber-t);">— home lean: half size</span>' : '';
+  const label = TIER_TEXT[action] || action;
+  const cls = action === 'LEAN' ? ' pass' : '';
+  return '<div class="bet-signal' + cls + '">' + label +
+         ' &middot; <span class="bet-signal-strong">' + team + '</span>' + lineStr + half + '</div>';
+}
+
+// Independent revenge overlay (56% historical; forward test 2026-27):
+// home team lost the last meeting this season by 15-24, rematch within 45 days.
+function revengeSignal(g) {
+  if (!g.revenge) return '';
+  const r = g.revenge;
+  return '<div class="bet-signal" style="margin-top:6px;">REVENGE ANGLE' +
+         ' &middot; Bet <span class="bet-signal-strong">' + g.home_team + '</span> ATS' +
+         ' <span style="font-weight:500; color:var(--muted);">(lost the last meeting by ' +
+         Math.abs(r.prev_margin).toFixed(0) + ', ' + r.days_ago + ' days ago)</span></div>';
 }
 
 function renderSchedule() {
@@ -1374,14 +1395,21 @@ function renderSchedule() {
     const homeP = (+g.home_win_prob) || 0;
     const awayP = 1 - homeP;
     const flags = [];
-    if (g.bet_action === 'BET' && g.in_window === true) {
-      flags.push('<span class="flag window">OCT–JAN WINDOW · VALIDATED</span>');
+    if (g.bet_action === 'STRONG_BET') {
+      flags.push('<span class="flag strong">STRONG BET · ' + (g.recommended_team || '') + '</span>');
+    } else if (g.bet_action === 'BET') {
+      flags.push('<span class="flag window">BET · ' + (g.recommended_team || '') + '</span>');
+    } else if (g.bet_action === 'LEAN') {
+      flags.push('<span class="flag lean">LEAN · ' + (g.recommended_team || '') + '</span>');
     }
-    if (g.bet_action === 'PASS_NEWS') {
-      flags.push('<span class="flag caution">4+ PT MOVE · LIKELY NEWS</span>');
+    if (g.half_size === true) {
+      flags.push('<span class="flag caution">HOME LEAN · ½ SIZE</span>');
+    }
+    if (g.revenge) {
+      flags.push('<span class="flag revenge">REVENGE · ' + g.home_team + '</span>');
     }
     const edgeLine = edgeCallout(g);
-    const betLine = betSignal(g);
+    const betLine = betSignal(g) + revengeSignal(g);
     const card = document.createElement('div');
     card.className = 'game-card';
     card.innerHTML = `
