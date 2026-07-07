@@ -188,7 +188,8 @@ nav.bottom-nav {
   z-index: 20;
 }
 nav.bottom-nav .row {
-  display: grid; grid-template-columns: repeat(6, 1fr);
+  /* one row regardless of tab count: columns are generated, never wrapped */
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
   height: var(--bottom-nav-h);
   max-width:440px; margin:0 auto;
 }
@@ -199,13 +200,16 @@ nav.bottom-nav button {
   color: var(--muted);
   font-family: inherit;
   font-weight: 600;
-  font-size: 10.5px;
-  letter-spacing: .02em;
+  font-size: 9.5px;
+  letter-spacing: 0;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 3px;
   cursor: pointer;
   transition: color .15s ease;
-  padding: 6px 2px;
+  padding: 6px 1px;
   position: relative;
 }
 nav.bottom-nav button:active { background: var(--surface); }
@@ -261,7 +265,9 @@ nav.bottom-nav button.active::before {
 
 /* Spread strip: model line vs market open, side by side */
 .spread-strip {
-  display: grid; grid-template-columns: 1fr 1fr;
+  /* equal columns for however many boxes the card puts in (2 on schedule
+     cards, 3 on results cards) — never wraps */
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
   gap: 8px; margin-top: 12px;
 }
 .spread-box {
