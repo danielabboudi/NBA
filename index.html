@@ -1154,6 +1154,7 @@ function renderTrajectory() {
     // per season change is true for every line. Seasons are read from the
     // data — new ones appear on their own.
     const SEASON_SPAN = 115;               // 82 games + max playoff run + pad
+    const SEASON_LEN = 82;
     const seasonOf = d => {
       const y = +d.slice(0, 4), m = +d.slice(5, 7);
       return m >= 9 ? y : y - 1;           // season labeled by starting year
@@ -1167,11 +1168,19 @@ function renderTrajectory() {
       const col = TC[t] || SLATE_MID;
       const isHi = TRAJ_HIGHLIGHT && t === TRAJ_HIGHLIGHT;
       const dim = TRAJ_HIGHLIGHT && !isHi;
+      // The 82-game window usually TRUNCATES the oldest season — those
+      // points are the END of that season, so right-align them (otherwise
+      // they sit at "game 1" and a long flat connector shoots across the
+      // missing months).
+      const totals = {};
+      series.date.forEach(d => { const s = seasonOf(d); totals[s] = (totals[s] || 0) + 1; });
+      const firstSeason = Math.min(...Object.keys(totals).map(Number));
       const counters = {};
       const xs = series.date.map(d => {
         const s = seasonOf(d);
         counters[s] = (counters[s] || 0) + 1;
-        return seasons.indexOf(s) * SEASON_SPAN + counters[s];
+        const offset = (s === firstSeason) ? Math.max(0, SEASON_LEN - totals[s]) : 0;
+        return seasons.indexOf(s) * SEASON_SPAN + offset + counters[s];
       });
       return {
         type: 'scatter', mode: 'lines', name: t,
