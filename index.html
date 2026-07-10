@@ -1147,25 +1147,58 @@ function renderTrajectory() {
   // Direction: t = 0 → OLDEST point in the 82-game window (LEFT),
   // t = N-1 → most recent point (RIGHT). Matches All-Teams-v2.png.
   if (TRAJ_MODE === 'overlay') {
+    // Shared season-position x-axis (ported from the NFL dashboard,
+    // 2026-07-10): derive each point's season from its date (Sep+ = the new
+    // season, labeled by starting year), number games within each season per
+    // team, and place all 30 teams on the same scale so ONE dashed boundary
+    // per season change is true for every line. Seasons are read from the
+    // data — new ones appear on their own.
+    const SEASON_SPAN = 115;               // 82 games + max playoff run + pad
+    const seasonOf = d => {
+      const y = +d.slice(0, 4), m = +d.slice(5, 7);
+      return m >= 9 ? y : y - 1;           // season labeled by starting year
+    };
+    const seasonLabel = y => y + '–' + String((y + 1) % 100).padStart(2, '0');
+    const seasonsSet = new Set();
+    teams.forEach(t => DATA.team_trajectory[t].date.forEach(d => seasonsSet.add(seasonOf(d))));
+    const seasons = [...seasonsSet].sort((a, b) => a - b);
     const traces = teams.map(t => {
       const series = DATA.team_trajectory[t];
       const col = TC[t] || SLATE_MID;
       const isHi = TRAJ_HIGHLIGHT && t === TRAJ_HIGHLIGHT;
       const dim = TRAJ_HIGHLIGHT && !isHi;
+      const counters = {};
+      const xs = series.date.map(d => {
+        const s = seasonOf(d);
+        counters[s] = (counters[s] || 0) + 1;
+        return seasons.indexOf(s) * SEASON_SPAN + counters[s];
+      });
       return {
         type: 'scatter', mode: 'lines', name: t,
-        x: series.t, y: series.rating,
-        customdata: series.date,
+        x: xs, y: series.rating,
+        customdata: series.date.map(d => d + ' · ' + seasonLabel(seasonOf(d)) + ' season'),
         line: { color: dim ? col + '20' : col, width: isHi ? 3 : 1.1 },
         hovertemplate: '<b>' + t + '</b><br>%{customdata}<br>rating %{y:.2f}<extra></extra>',
         showlegend: false,
       };
     });
+    const shapes = seasons.slice(1).map((yr, i) => ({
+      type: 'line', xref: 'x', yref: 'paper',
+      x0: (i + 1) * SEASON_SPAN - 0.5, x1: (i + 1) * SEASON_SPAN - 0.5,
+      y0: 0, y1: 1,
+      line: { color: SLATE_MID, width: 1, dash: 'dash' }, layer: 'below',
+    }));
+    const annotations = seasons.map((yr, i) => ({
+      text: seasonLabel(yr), xref: 'x', yref: 'paper',
+      x: i * SEASON_SPAN + SEASON_SPAN * 0.45, y: 1.02, showarrow: false,
+      font: { size: 10.5, color: MUTED, weight: 700, family: "'Plus Jakarta Sans', sans-serif" },
+    }));
     document.getElementById('plot-traj').style.height = '460px';
     const layout = Object.assign({}, COMMON_LAYOUT, {
-      margin: { t: 12, b: 34, l: 38, r: 10 },
+      margin: { t: 26, b: 34, l: 38, r: 10 },
+      shapes, annotations,
       xaxis: Object.assign({}, COMMON_AXIS, {
-        title: { text: 'Game in window  (oldest → most recent)', font: { size: 11, color: MUTED, family: "'Plus Jakarta Sans', sans-serif" } },
+        title: { text: 'Season by season  (dashed line = new season)', font: { size: 11, color: MUTED, family: "'Plus Jakarta Sans', sans-serif" } },
         showticklabels: false,
       }),
       yaxis: Object.assign({}, COMMON_AXIS, { title: { text: 'Ridge rating', font: { size: 11, color: MUTED, family: "'Plus Jakarta Sans', sans-serif" } } }),
