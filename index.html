@@ -1446,6 +1446,12 @@ function betSignal(g) {
   if (action === 'PASS') {
     return '<div class="bet-signal pass">No bet on this game (edge below 1.5)</div>';
   }
+  if (action === 'PASS_EXTREME') {
+    return '<div class="bet-signal pass">Edge too large to trust (' +
+           fmtSigned(g.edge, 1) + ') — no bet. Gaps above 5 points are the ' +
+           'model overstating itself, not a better spot: they cover only ' +
+           '47% of the time.</div>';
+  }
   if (action === 'PASS_WINDOW') {
     const t = g.recommended_team || '';
     return '<div class="bet-signal pass">Outside the Oct–Jan window — no bet' +
@@ -1460,8 +1466,12 @@ function betSignal(g) {
     ? ' <span style="font-weight:600; color:var(--amber-t);">— home lean: half size</span>' : '';
   const label = TIER_TEXT[action] || action;
   const cls = action === 'LEAN' ? ' pass' : '';
+  // LEAN covers 51.8% in the Oct-Jan window — BELOW the 52.4% needed to break
+  // even at -110. It is a talking point, never a bet. Say so on the chip.
+  const note = action === 'LEAN'
+    ? ' <span style="font-weight:500; color:var(--muted);">(below break-even — not a bet)</span>' : '';
   return '<div class="bet-signal' + cls + '">' + label +
-         ' &middot; <span class="bet-signal-strong">' + team + '</span>' + lineStr + half + '</div>';
+         ' &middot; <span class="bet-signal-strong">' + team + '</span>' + lineStr + half + note + '</div>';
 }
 
 // Independent revenge overlay (56% historical; forward test 2026-27):
