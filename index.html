@@ -890,10 +890,10 @@ function renderRankings() {
   // every line adds up to the rating: Off + Def, and the five factors
   const hover = rows.map(r =>
     '<b>' + r.team + '</b><br>Rating ' + fmtSigned(r.ridge_rating_dm, 2) +
-    '<br>Off ' + fmtSigned(r.off_pts, 2) + ' &middot; Def ' + fmtSigned(r.def_pts, 2) +
-    '<br>2P ' + r.net_2p.toFixed(2) + ' &middot; 3P ' + r.net_3p.toFixed(2) +
-    ' &middot; REB ' + r.net_oreb.toFixed(2) +
-    '<br>TOV ' + r.net_tov.toFixed(2) + ' &middot; FT ' + r.net_ft.toFixed(2) +
+    '<br>Off ' + fmtSigned(r.off_pts, 2) + ' \u00b7 Def ' + fmtSigned(r.def_pts, 2) +
+    '<br>2P ' + r.net_2p.toFixed(2) + ' \u00b7 3P ' + r.net_3p.toFixed(2) +
+    ' \u00b7 REB ' + r.net_oreb.toFixed(2) +
+    '<br>TOV ' + r.net_tov.toFixed(2) + ' \u00b7 FT ' + r.net_ft.toFixed(2) +
     '<extra></extra>'
   );
 
@@ -989,8 +989,8 @@ const FACTOR_OFF_COLORS = Object.assign({}, FACTOR_COLORS);
 const FACTOR_DEF_COLORS = {};
 Object.keys(FACTOR_COLORS).forEach(f => { FACTOR_DEF_COLORS[f] = lightenHex(FACTOR_COLORS[f], OFFENSE_TINT); });
 
-const DECOMP_SUB_SPLIT = 'Stacked contributions sum to ridge rating &middot; darker = offense, lighter = defense';
-const DECOMP_SUB_NET   = 'Bars sum to ridge rating &middot; 2P &middot; 3P &middot; REB &middot; TOV &middot; FT (net of off+def)';
+const DECOMP_SUB_SPLIT = 'Stacked contributions sum to ridge rating \u00b7 darker = offense, lighter = defense';
+const DECOMP_SUB_NET   = 'Bars sum to ridge rating \u00b7 2P \u00b7 3P \u00b7 REB \u00b7 TOV \u00b7 FT (net of off+def)';
 
 function renderDecomp() {
   const rows = DATA.team_current.slice().sort((a,b) => a.ridge_rating_dm - b.ridge_rating_dm);
@@ -1006,7 +1006,7 @@ function renderDecomp() {
         type: 'bar', orientation: 'h', name: f,
         y: teams, x: rows.map(r => r[key]),
         marker: { color: FACTOR_COLORS[f], line: { color: CANVAS, width: 1.5 } },
-        hovertemplate: rows.map(r => '<b>' + r.team + '</b> &middot; ' + f + '<br>contrib ' + r[key].toFixed(3) + '<extra></extra>'),
+        hovertemplate: rows.map(r => '<b>' + r.team + '</b> \u00b7 ' + f + '<br>contrib ' + r[key].toFixed(3) + '<extra></extra>'),
       });
     });
   } else {
@@ -1019,14 +1019,14 @@ function renderDecomp() {
         legendgroup: f,
         y: teams, x: rows.map(r => r[dkey]),
         marker: { color: FACTOR_DEF_COLORS[f], line: { color: CANVAS, width: 1.5 } },
-        hovertemplate: rows.map(r => '<b>' + r.team + '</b> &middot; ' + f + ' def<br>contrib ' + r[dkey].toFixed(3) + '<extra></extra>'),
+        hovertemplate: rows.map(r => '<b>' + r.team + '</b> \u00b7 ' + f + ' def<br>contrib ' + r[dkey].toFixed(3) + '<extra></extra>'),
       });
       traces.push({
         type: 'bar', orientation: 'h', name: f + ' off',
         legendgroup: f,
         y: teams, x: rows.map(r => r[okey]),
         marker: { color: FACTOR_OFF_COLORS[f], line: { color: CANVAS, width: 1.5 } },
-        hovertemplate: rows.map(r => '<b>' + r.team + '</b> &middot; ' + f + ' off<br>contrib ' + r[okey].toFixed(3) + '<extra></extra>'),
+        hovertemplate: rows.map(r => '<b>' + r.team + '</b> \u00b7 ' + f + ' off<br>contrib ' + r[okey].toFixed(3) + '<extra></extra>'),
       });
     });
   }
@@ -1097,7 +1097,7 @@ function renderScatter() {
     textfont: { size: 9.5, color: rows.map(r => TC[r.team] || GRAPHITE), weight: 700, family: "'Plus Jakarta Sans', sans-serif" },
     hovertemplate: rows.map(r =>
       '<b>' + r.team + '</b><br>Rating ' + r.ridge_rating_dm.toFixed(2) +
-      '<br>Off z ' + r.o_zscore.toFixed(2) + ' &middot; Def z ' + r.d_zscore.toFixed(2) +
+      '<br>Off z ' + r.o_zscore.toFixed(2) + ' \u00b7 Def z ' + r.d_zscore.toFixed(2) +
       '<extra></extra>'
     ),
   };
@@ -1402,7 +1402,7 @@ function renderTeamNote(rating, b2b) {
   if (b2b === 1 || b2b === true || b2b === '1') {
     bits.push('<span class="b2b-tag">B2B</span>');
   }
-  return bits.length ? bits.join(' &middot; ') : '&nbsp;';
+  return bits.length ? bits.join(' \u00b7 ') : '\u00a0';
 }
 
 // =========== Attribution helpers ==========================================
@@ -1503,7 +1503,7 @@ function renderAttribution6(g) {
   }).join('');
   return '<div class="attr6-block">' +
            '<div class="attr6-head"><span class="slash"></span>Why the model made this line</div>' +
-           '<div class="attr6-sub">Each part of the matchup, in points &mdash; bars right favor ' +
+           '<div class="attr6-sub">Each part of the matchup, in points \u2014 bars right favor ' +
              g.home_team + ', left favor ' + g.away_team + '.</div>' +
            rows +
            '<div class="attr6-total"><span>Adds up to the model line</span><b>' +
@@ -1602,7 +1602,7 @@ function renderSchedule() {
       <div class="bet-row" style="flex-direction: column; align-items: flex-start; gap: 4px;">
         ${edgeLine}
       </div>
-      ${(g.rating_pending && g.rating_pending.length) ? '<div class="bet-signal pass">' + g.rating_pending.join(', ') + (g.rating_pending.length > 1 ? ' play' : ' plays') + ' tonight &mdash; that game isn&rsquo;t in this number yet (rating as of the previous game); re-priced at 6:15 AM.</div>' : ''}
+      ${(g.rating_pending && g.rating_pending.length) ? '<div class="bet-signal pass">' + g.rating_pending.join(', ') + (g.rating_pending.length > 1 ? ' play' : ' plays') + ' tonight \u2014 that game isn\u2019t in this number yet (rating as of the previous game); re-priced at 6:15 AM.</div>' : ''}
       <div class="game-detail">
         ${renderAttribution6(g)}
         ${renderLineup(g)}
@@ -1654,8 +1654,8 @@ function renderForecast() {
   const label = (DATA.model_meta && DATA.model_meta.forecast_label) || '1,000 sims';
   if (sub) {
     sub.innerHTML = remaining > 0
-      ? label.split('·').join('&middot;') + ' &mdash; every game gets the model&rsquo;s odds, then the play-in and every best-of-7 series play out in each simulated season'
-      : 'Season complete &middot; final records &middot; vs Rating = wins above what the rating deserved';
+      ? label.split('·').join('\u00b7') + ' \u2014 every game gets the model\u2019s odds, then the play-in and every best-of-7 series play out in each simulated season'
+      : 'Season complete \u00b7 final records \u00b7 vs Rating = wins above what the rating deserved';
   }
   if (FCST_CONF !== 'ALL') rows = rows.filter(r => r.conference === FCST_CONF);
   rows.sort((a,b) => {
@@ -1780,13 +1780,13 @@ function renderHappened(g) {
   return '<div class="attr6-block od-block">' +
     '<div class="attr6-head"><span class="slash"></span>What happened</div>' +
     '<div class="attr6-sub">Points each offense produced in each factor vs a league-average team on the same possessions. ' +
-      'A team&rsquo;s defense is the other column, flipped.</div>' +
+      'A team\u2019s defense is the other column, flipped.</div>' +
     '<table class="od-table od-happened"><thead><tr><th></th><th>' + A + ' offense</th><th>' + H + ' offense</th><th>Margin</th></tr></thead><tbody>' +
       body +
       '<tr class="od-tot"><th>Total</th>' + cell(pr(hp.away_total)) + cell(pr(hp.home_total)) +
         '<td class="od-net">' + plusTxt(+g.margin, H, A, 0) + '</td></tr>' +
     '</tbody></table>' +
-    '<div class="od-note">Other includes rebounds and free throws the factor formula doesn&rsquo;t count.</div>' +
+    '<div class="od-note">Other includes rebounds and free throws the factor formula doesn\u2019t count.</div>' +
   '</div>';
 }
 
@@ -1816,7 +1816,7 @@ function renderVsExpected(g) {
     '<div class="attr6-head"><span class="slash"></span>Versus expectation</div>' +
     '<div class="attr6-sub">How each factor came out vs what the model expected. Bars point to the team that benefited.</div>' +
     html +
-    '<div class="attr6-total"><span>Model had ' + marginTxt(R.expTot, H, A, 1) + ' &middot; final ' +
+    '<div class="attr6-total"><span>Model had ' + marginTxt(R.expTot, H, A, 1) + ' \u00b7 final ' +
       marginTxt(+g.margin, H, A, 0) + '</span><b>' + favors(R.swing, H, A) + '</b></div>' +
     '<div class="od-note">Other includes home court, lineup, rest and box-score bookkeeping.' +
       (g.pregame_saved === false ? ' Model line re-priced after the game (no saved pre-game copy).' : '') + '</div>' +
@@ -1836,9 +1836,9 @@ function renderResults() {
   const rsub = document.getElementById('res-sub');
   if (rsub) {
     rsub.innerHTML = R.in_progress_date
-      ? 'Last finished slate &middot; ' + R.in_progress_date + ' still being played (' +
+      ? 'Last finished slate \u00b7 ' + R.in_progress_date + ' still being played (' +
         R.in_progress_final + ' of ' + R.in_progress_total + ' final)'
-      : 'Most recent completed slate &middot; tap a game for what drove it';
+      : 'Most recent completed slate \u00b7 tap a game for what drove it';
   }
   const grid = document.getElementById('results-grid');
   grid.innerHTML = '';
@@ -1875,7 +1875,7 @@ function renderResults() {
       if (!m) return '';
       const up = +m.delta >= 0;
       return '<div class="kv"><span class="k">' + t + ' rating</span><span class="v">' +
-             (+m.before).toFixed(2) + ' &rarr; ' + (+m.after).toFixed(2) +
+             (+m.before).toFixed(2) + ' \u2192 ' + (+m.after).toFixed(2) +
              ' <b style="color:' + (up ? 'var(--green-t)' : 'var(--amber-t)') + '">(' + fmtSigned(m.delta, 2) + ')</b></span></div>';
     };
     const card = document.createElement('div');
